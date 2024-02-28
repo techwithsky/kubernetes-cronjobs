@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: argocd-sync
+  namespace: default
+  labels:
+    k8slens-edit-resource-version: v1
+spec:
+  schedule: 45 03 * * mon-fri
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: argocd-sync
+              image: curlimages/curl:latest
+              command:
+                - sh
+                - '-c'
+                - >
+                  echo "------Logging in Argocd------"
+                  response=$(curl -s -X POST https://your-argocd-url.com/api/v1/session \
+                  --header "Content-Type: application/json" \
+                  --data '{"username": "admin", "password": "your-argocd-password"}')
+                  echo "------Login successful------"
+                  token=$(echo "$response" | awk -F '"' '{print $4}')
+                  echo " "
+                  echo "-----Syncing Applications-----"
+                  echo " "
+                  curl -X POST -H "Authorization: Bearer $token" https://your-argocd-url.com/api/v1/applications/sample-application1/sync
+                  curl -X POST -H "Authorization: Bearer $token" https://your-argocd-url.com/api/v1/applications/sample-application2/sync
+                  # Add more applications here
+              imagePullPolicy: Always
+          restartPolicy: OnFailure
+          terminationGracePeriodSeconds: 30
+          dnsPolicy: ClusterFirst
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
